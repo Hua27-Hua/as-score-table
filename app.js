@@ -843,10 +843,10 @@ function showExportModal(images) {
     .map(
       (img, i) => `
       <figure class="export-figure">
-        <figcaption><span class="fig-tag">${img.label}</span><span class="fig-hint">手机请长按图片保存原图，电脑可点下方按钮下载</span></figcaption>
+        <figcaption><span class="fig-tag">${img.label}</span><span class="fig-hint">微信/豆瓣请长按上方图片保存，普通浏览器可点下方下载</span></figcaption>
         <img src="${img.dataUrl}" alt="${img.label}" />
         <div class="figure-actions">
-          <a class="dl" href="${img.dataUrl}" download="${img.filename}" target="_blank" rel="noopener">打开/下载这张</a>
+          <a class="dl" href="${img.url}" download="${img.filename}">下载这张</a>
           <button type="button" class="copy" data-index="${i}">复制</button>
         </div>
       </figure>`,
@@ -903,10 +903,8 @@ async function exportImage(event) {
 
     if (!images.length) return;
     showExportModal(images);
-    const triggeredByMobileButton = event?.currentTarget === els.mobileSaveBtn;
-    const canAutoDownload = !triggeredByMobileButton && !isMobileBrowser() && !isInAppWebView();
-    if (canAutoDownload) {
-      images.forEach((img) => downloadDataUrl(img.dataUrl, img.filename));
+    if (!isInAppWebView()) {
+      images.forEach((img) => downloadBlob(img.blob, img.filename));
     }
   } finally {
     triggerBtns.forEach((b, i) => {

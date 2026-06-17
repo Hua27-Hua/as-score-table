@@ -843,7 +843,7 @@ function showExportModal(images) {
     .map(
       (img, i) => `
       <figure class="export-figure">
-        <figcaption><span class="fig-tag">${img.label}</span><span class="fig-hint">微信/豆瓣请长按上方图片保存，普通浏览器可点下方下载</span></figcaption>
+        <figcaption><span class="fig-tag">${img.label}</span><span class="fig-hint">若豆瓣等 App 内置浏览器拦截“保存图片”，请长按下面图片保存</span></figcaption>
         <img src="${img.dataUrl}" alt="${img.label}" />
         <div class="figure-actions">
           <a class="dl" href="${img.url}" download="${img.filename}">下载这张</a>

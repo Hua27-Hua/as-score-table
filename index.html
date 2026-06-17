@@ -1,0 +1,237 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>世界全女联盟打分表</title>
+    <link rel="icon" href="data:," />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="mobile-scorebar" id="mobileScorebar" aria-live="polite">
+      <button type="button" id="mobileClearBtn" class="mobile-clear-action" aria-label="清空" title="清空">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M3 6h18" />
+          <path d="M8 6V4h8v2" />
+          <path d="m6 6 1 16h10l1-16" />
+          <path d="M10 11v6" />
+          <path d="M14 11v6" />
+        </svg>
+        清空
+      </button>
+      <div>
+        <span>当前得分</span>
+        <strong id="mobileScore">10</strong>
+      </div>
+      <div>
+        <span>扣分</span>
+        <strong id="mobileDeduct">0</strong>
+      </div>
+      <button type="button" id="mobileSaveBtn" class="mobile-download-action" aria-label="下载图片" title="下载图片">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M15 8h.01" />
+          <path d="M3 6a3 3 0 0 1 3-3h12a3 3 0 0 1 3 3v12a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3z" />
+          <path d="m3 16 5-5a2 2 0 0 1 3 0l5 5" />
+          <path d="m14 14 1-1a2 2 0 0 1 3 0l3 3" />
+        </svg>
+        下载
+      </button>
+    </div>
+
+    <main class="app">
+      <section class="hero">
+        <div>
+          <h1>
+            <a class="title-link" href="https://www.douban.com/group/topic/487038490/" target="_blank" rel="noopener noreferrer">
+              世界全女联盟打分表
+            </a>
+          </h1>
+          <p class="hero-copy">技术与域名支持：<a class="hero-link" href="https://herarchive.feminism-nv.space/" target="_blank" rel="noopener noreferrer">全女评审团</a></p>
+        </div>
+        <div class="score-meter" aria-live="polite">
+          <span>当前得分</span>
+          <strong id="finalScore">10</strong>
+          <small id="scoreHint">AS文上限 10 分</small>
+        </div>
+      </section>
+
+      <section class="workspace">
+        <form class="form-container" id="scoreForm">
+          
+          <section class="panel form-panel">
+            <div class="section-title">
+              <h2>基础信息</h2>
+            </div>
+            <div class="field-grid">
+              <label>
+                作品名称
+                <input id="workTitle" type="text" placeholder="填写作品名称" />
+              </label>
+              <label>
+                作者
+                <input id="author" type="text" placeholder="填写作者" />
+              </label>
+              <label class="wide-field">
+                作品来源平台
+                <input id="sourcePlatform" type="text" placeholder="如：番茄小说、豆瓣阅读、AO3等" />
+              </label>
+            </div>
+          </section>
+
+          <section class="panel form-panel">
+            <div class="section-title">
+              <h2>作品分类</h2>
+            </div>
+            <fieldset class="type-picker">
+              <legend>作品分类与上限</legend>
+              <label>
+                <input type="radio" name="workType" value="as" checked />
+                <span>
+                  <strong>AS文：≤10分</strong>
+                  指故事剧情围绕女性展开。世界观不含男，亦不含拟男（如男机器人）。为纯理想状态。凡含男皆非此类。
+                </span>
+              </label>
+              <label>
+                <input type="radio" name="workType" value="semiAs" />
+                <span>
+                  <strong>半AS文：≤8分</strong>
+                  指主角团全体为女性且无性缘，但存在男性配角和路人等。
+                </span>
+              </label>
+              <label>
+                <input type="radio" name="workType" value="nonAs" />
+                <span>
+                  <strong>非AS文：≤0分</strong>
+                  指主角团内存在男性，或主角团有性缘。反派为重要配角且为男时按作者情感倾向判断，倾向积极多高光则判定主角团含男，批判为主则判定主角团不含男。
+                </span>
+              </label>
+            </fieldset>
+            <p class="definition-note">
+              <strong>女性定义：</strong>生理为女、自我认知为女。女穿男、男穿女、长JJ、男人有子宫皆不为女性。
+            </p>
+          </section>
+
+          <section class="panel form-panel bonus-panel-wrap">
+            <div class="section-title">
+              <h2>加分项</h2>
+            </div>
+            <div class="bonus-card" data-active="false">
+              <label class="bonus-head">
+                <input type="checkbox" id="bonusPoint" />
+                <span>从女男平等发展为全女，可加一分。不超过上限。</span>
+                <strong>+1分</strong>
+              </label>
+            </div>
+          </section>
+
+          <section class="panel form-panel rule-list" aria-labelledby="deductionTitle">
+            <div class="section-title">
+              <h2 id="deductionTitle">扣分点</h2>
+              <span class="small-note">选中项目即扣除右侧对应分值</span>
+            </div>
+            <div id="rules"></div>
+          </section>
+
+          <section class="panel form-panel">
+            <div class="section-title">
+              <h2>总评</h2>
+            </div>
+            <label class="wide-label">
+              总评备注
+              <textarea id="overallNote" placeholder="填写整体判断、补充说明或争议点"></textarea>
+            </label>
+          </section>
+
+        </form>
+
+        <aside class="panel result-panel">
+          <div class="section-title">
+            <h2>打分结果</h2>
+            <button class="title-save-button" type="button" id="printBtn" aria-label="保存图片" title="保存图片">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M15 8h.01" />
+                <path d="M3 6a3 3 0 0 1 3-3h12a3 3 0 0 1 3 3v12a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3z" />
+                <path d="m3 16 5-5a2 2 0 0 1 3 0l5 5" />
+                <path d="m14 14 1-1a2 2 0 0 1 3 0l3 3" />
+              </svg>
+              保存图片
+            </button>
+          </div>
+
+          <dl class="score-breakdown">
+            <div class="current-score-row">
+              <dt>当前得分</dt>
+              <dd id="sideScore">10</dd>
+            </div>
+            <div>
+              <dt>分类上限</dt>
+              <dd id="baseScore">10</dd>
+            </div>
+            <div>
+              <dt>加分</dt>
+              <dd id="bonusScore">0</dd>
+            </div>
+            <div>
+              <dt>扣分</dt>
+              <dd id="deductScore">0</dd>
+            </div>
+            <div>
+              <dt>限制项</dt>
+              <dd id="capScore">无</dd>
+            </div>
+          </dl>
+
+          <label class="report-box">
+            已填写项目
+            <textarea id="report" readonly></textarea>
+          </label>
+
+          <div class="actions">
+            <button type="button" id="exportImageBtn">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M15 8h.01" />
+                <path d="M3 6a3 3 0 0 1 3-3h12a3 3 0 0 1 3 3v12a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3z" />
+                <path d="m3 16 5-5a2 2 0 0 1 3 0l5 5" />
+                <path d="m14 14 1-1a2 2 0 0 1 3 0l3 3" />
+              </svg>
+              保存图片
+            </button>
+            <button type="button" id="clearBtn" class="secondary-action">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M3 6h18" />
+                <path d="M8 6V4h8v2" />
+                <path d="m6 6 1 16h10l1-16" />
+                <path d="M10 11v6" />
+                <path d="M14 11v6" />
+              </svg>
+              清空
+            </button>
+          </div>
+
+          <p class="save-status" id="saveStatus">内容会自动保存在当前浏览器中（换浏览器/换手机不会同步）；导出会生成「扣分」「未扣分」两张高清图，分开发可防止画质被压。</p>
+          <p class="source-note">以上减分情节楼主应当排雷；若未排雷，组员指出应当接受补充。</p>
+        </aside>
+      </section>
+    </main>
+
+    <div class="image-modal" id="imageModal" aria-hidden="true">
+      <div class="image-card" role="dialog" aria-modal="true" aria-labelledby="imageModalTitle">
+        <header>
+          <div>
+            <h2 id="imageModalTitle">导出图片预览</h2>
+              <p>已生成两张高清图：①扣分题目与备注、②未扣分题目。分别保存发到豆瓣，可避免长图被压糊。手机长按图片即可保存。</p>
+          </div>
+          <button class="icon-button" type="button" id="closeImageModal" aria-label="关闭预览" title="关闭预览">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M18 6 6 18" />
+              <path d="m6 6 12 12" />
+            </svg>
+          </button>
+        </header>
+        <div class="image-list" id="imageList"></div>
+      </div>
+    </div>
+
+    <script src="app.js"></script>
+  </body>
+</html>

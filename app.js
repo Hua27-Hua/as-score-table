@@ -951,11 +951,26 @@ function confirmAndReset() {
   }
 }
 
+function toggleCardCheckbox(event) {
+  if (event.target.closest("input, textarea, button, a, label")) return;
+
+  const card = event.target.closest(".rule-card, .bonus-card");
+  if (!card) return;
+
+  const checkbox = card.querySelector('input[type="checkbox"]');
+  if (!checkbox) return;
+
+  checkbox.checked = !checkbox.checked;
+  checkbox.dispatchEvent(new Event("change", { bubbles: true }));
+}
+
 // 核心初始化流
 renderRules();
 restoreFormState();
 els.form.addEventListener("input", update);
 els.form.addEventListener("change", update);
+els.rules.addEventListener("click", toggleCardCheckbox);
+document.querySelector(".bonus-card")?.addEventListener("click", toggleCardCheckbox);
 els.exportImageBtn.addEventListener("click", exportImage);
 els.mobileSaveBtn.addEventListener("click", exportImage);
 els.clearBtn.addEventListener("click", confirmAndReset);

@@ -328,6 +328,11 @@ input:focus, textarea:focus {
   cursor: pointer;
 }
 
+.bonus-head span,
+.rule-title {
+  min-width: 0;
+}
+
 /* 统一内部标题排版 */
 .type-picker strong {
   display: block;
@@ -724,44 +729,61 @@ svg {
     inset: 0 0 auto;
     z-index: 15;
     min-height: 54px;
-    padding: max(8px, env(safe-area-inset-top)) 12px 8px;
+    padding: max(8px, env(safe-area-inset-top)) 10px 8px;
     display: grid;
-    grid-template-columns: auto minmax(0, 1fr) minmax(0, 1fr) auto;
-    gap: 10px;
+    grid-template-columns: auto minmax(54px, 1fr) minmax(54px, 1fr) auto;
+    gap: 8px;
     align-items: center;
     background: rgba(25, 83, 60, 0.98);
     color: #fff;
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
     backdrop-filter: blur(4px);
+    -webkit-text-size-adjust: 100%;
   }
 
   .mobile-scorebar div {
     display: flex;
     align-items: baseline;
+    justify-content: center;
     gap: 4px;
+    min-width: 0;
+    white-space: nowrap;
   }
 
   .mobile-scorebar span {
     color: rgba(255, 255, 255, 0.8);
-    font-size: 0.75rem;
+    font-size: 13px;
+    line-height: 1;
+    white-space: nowrap;
   }
 
   .mobile-scorebar strong {
-    font-size: 1.25rem;
+    font-size: 28px;
+    line-height: 1;
+    white-space: nowrap;
   }
 
   .mobile-scorebar button {
     min-height: 36px;
-    padding: 0 10px;
+    padding: 0 9px;
     display: inline-flex;
     align-items: center;
+    justify-content: center;
     gap: 4px;
     border: none;
     border-radius: 6px;
     background: #fff;
     color: var(--accent-dark);
-    font-size: 0.85rem;
+    font-size: 16px;
+    line-height: 1;
     font-weight: 800;
+    white-space: nowrap;
+  }
+
+  .mobile-scorebar button svg {
+    width: 17px;
+    height: 17px;
+    flex: 0 0 auto;
   }
 
   .mobile-scorebar .mobile-clear-action {
@@ -804,8 +826,38 @@ svg {
   }
 
   .bonus-head {
-    grid-template-columns: 22px minmax(0, 1fr) 44px;
+    grid-template-columns: 22px minmax(0, 1fr) auto;
     padding: 14px;
+  }
+
+  .bonus-head strong {
+    min-width: 72px;
+    padding: 6px 10px;
+    white-space: nowrap;
+    justify-self: end;
+  }
+}
+
+@media (max-width: 380px) {
+  .mobile-scorebar {
+    padding-left: 8px;
+    padding-right: 8px;
+    gap: 6px;
+    grid-template-columns: auto minmax(48px, 1fr) minmax(48px, 1fr) auto;
+  }
+
+  .mobile-scorebar button {
+    min-height: 34px;
+    padding: 0 7px;
+    font-size: 15px;
+  }
+
+  .mobile-scorebar span {
+    font-size: 12px;
+  }
+
+  .mobile-scorebar strong {
+    font-size: 26px;
   }
 }
 

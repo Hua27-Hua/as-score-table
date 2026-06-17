@@ -815,7 +815,17 @@ function drawValueBadge(ctx, row, x, y, w, h) {
 
 function isInAppWebView() {
   const ua = navigator.userAgent.toLowerCase();
-  return ua.includes("micromessenger") || ua.includes("qq/") || ua.includes("dingtalk") || ua.includes("wxwork");
+  return (
+    ua.includes("micromessenger") ||
+    ua.includes("douban") ||
+    ua.includes("qq/") ||
+    ua.includes("dingtalk") ||
+    ua.includes("wxwork")
+  );
+}
+
+function isMobileBrowser() {
+  return /android|iphone|ipad|ipod|mobile/i.test(navigator.userAgent) || window.matchMedia("(max-width: 640px)").matches;
 }
 
 function clearExportImages() {
@@ -833,10 +843,10 @@ function showExportModal(images) {
     .map(
       (img, i) => `
       <figure class="export-figure">
-        <figcaption><span class="fig-tag">${img.label}</span><span class="fig-hint">手机可长按图片保存，或点下方按钮</span></figcaption>
-        <img src="${img.url}" alt="${img.label}" />
+        <figcaption><span class="fig-tag">${img.label}</span><span class="fig-hint">手机请长按图片保存原图，电脑可点下方按钮下载</span></figcaption>
+        <img src="${img.dataUrl}" alt="${img.label}" />
         <div class="figure-actions">
-          <a class="dl" href="${img.url}" download="${img.filename}">下载这张</a>
+          <a class="dl" href="${img.dataUrl}" download="${img.filename}" target="_blank" rel="noopener">打开/下载这张</a>
           <button type="button" class="copy" data-index="${i}">复制</button>
         </div>
       </figure>`,
@@ -847,7 +857,7 @@ function showExportModal(images) {
   els.imageModal.setAttribute("aria-hidden", "false");
 }
 
-async function exportImage() {
+async function exportImage(event) {
   const state = collectState();
   const triggerBtns = [els.exportImageBtn, els.mobileSaveBtn, els.printBtn].filter(Boolean);
   const originals = triggerBtns.map((b) => b.innerHTML);
@@ -892,8 +902,12 @@ async function exportImage() {
     }
 
     if (!images.length) return;
-    images.forEach((img) => downloadDataUrl(img.dataUrl, img.filename));
     showExportModal(images);
+    const triggeredByMobileButton = event?.currentTarget === els.mobileSaveBtn;
+    const canAutoDownload = !triggeredByMobileButton && !isMobileBrowser() && !isInAppWebView();
+    if (canAutoDownload) {
+      images.forEach((img) => downloadDataUrl(img.dataUrl, img.filename));
+    }
   } finally {
     triggerBtns.forEach((b, i) => {
       b.disabled = false;

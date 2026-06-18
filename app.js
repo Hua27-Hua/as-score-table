@@ -19,7 +19,7 @@ const workTypes = {
 };
 
 const rules = [
-  { id: "r01", text: "未明确说明不随父姓、无随母姓意识（针对主角）。", points: 1 },
+  { id: "r01", text: "未明确说明不随蝻姓、无随母姓意识（针对主角）。", points: 1 },
   { id: "r02", text: "未使用女义词。", points: 1 },
   { id: "r03", text: "女性角色塑造不用心（取名随意如abb、脸谱化、平面化等）。", points: 1 },
   { id: "r04", text: "性别认知障碍（自称哥、爸、爷等）。", points: 1 },
@@ -96,6 +96,9 @@ const els = {
   imageModal: document.querySelector("#imageModal"),
   imageList: document.querySelector("#imageList"),
   closeImageModal: document.querySelector("#closeImageModal"),
+  exportModeModal: document.querySelector("#exportModeModal"),
+  closeExportModeModal: document.querySelector("#closeExportModeModal"),
+  exportModeOptions: document.querySelector("#exportModeOptions"),
 };
 
 function ruleNumber(rule) {
@@ -316,6 +319,27 @@ function downloadBlob(blob, filename) {
   setTimeout(() => URL.revokeObjectURL(url), 1200);
 }
 
+function downloadDataUrl(dataUrl, filename) {
+  const link = document.createElement("a");
+  link.href = dataUrl;
+  link.download = filename.replace(/[\\/:*?"<>|]/g, "_");
+  link.style.display = "none";
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+}
+
+function dataUrlToBlob(dataUrl) {
+  const [meta, data] = dataUrl.split(",");
+  const mime = (meta.match(/data:(.*?);base64/) || [])[1] || "image/jpeg";
+  const binary = atob(data);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i += 1) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return new Blob([bytes], { type: mime });
+}
+
 function wrapText(ctx, text, maxWidth) {
   const normalized = String(text || "").replace(/\r/g, "");
   const lines = [];
@@ -360,42 +384,174 @@ function drawLines(ctx, lines, x, firstBaseline, lineHeight, color) {
   });
 }
 
+function drawOcrBackground(ctx, width, height, mode = "light") {
+  const strong = mode === "strong";
+  const medium = mode === "medium";
+  const protectedMode = medium || strong;
+  ctx.save();
+
+  // Faint deterministic dots survive JPEG compression without becoming
+  // visually noisy on a phone-sized preview.
+  ctx.fillStyle = strong
+    ? "rgba(80, 70, 88, 0.14)"
+    : protectedMode
+      ? "rgba(80, 70, 88, 0.085)"
+      : "rgba(80, 70, 88, 0.045)";
+  const dotStep = strong ? 16 : protectedMode ? 22 : 28;
+  for (let y = 18; y < height; y += dotStep) {
+    const offset = Math.floor(y / dotStep) % 2 ? dotStep * 0.45 : 0;
+    for (let x = 14 + offset; x < width; x += dotStep) {
+      ctx.beginPath();
+      ctx.arc(x, y, strong ? 1.05 : protectedMode ? 0.85 : 0.65, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  // Repeated translucent text breaks up large clean OCR regions while
+  // remaining subordinate to the score content.
+  ctx.translate(width / 2, height / 2);
+  ctx.rotate(-Math.PI / 10);
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.font = `700 ${strong ? 22 : protectedMode ? 20 : 18}px ${FONT_FAMILY}`;
+  ctx.fillStyle = strong
+    ? "rgba(123, 63, 161, 0.22)"
+    : protectedMode
+      ? "rgba(123, 63, 161, 0.13)"
+      : "rgba(123, 63, 161, 0.055)";
+  const span = Math.hypot(width, height);
+  const rowStep = strong ? 76 : protectedMode ? 108 : 150;
+  const columnStep = strong ? 154 : protectedMode ? 190 : 230;
+  for (let y = -span; y <= span; y += rowStep) {
+    const rowOffset = Math.floor((y + span) / rowStep) % 2 ? columnStep / 2 : 0;
+    for (let x = -span + rowOffset; x <= span; x += columnStep) {
+      ctx.fillText("世界全女联盟打分表", x, y);
+    }
+  }
+
+  if (strong) {
+    ctx.rotate(Math.PI / 5);
+    ctx.font = `800 15px ${FONT_FAMILY}`;
+    ctx.fillStyle = "rgba(32, 33, 42, 0.18)";
+    for (let y = -span; y <= span; y += 58) {
+      const rowOffset = Math.floor((y + span) / 58) % 2 ? 62 : 0;
+      for (let x = -span + rowOffset; x <= span; x += 124) {
+        ctx.fillText("全女联盟", x, y);
+      }
+    }
+  }
+
+  ctx.restore();
+}
+
+function drawOcrOverlay(ctx, width, height, mode = "light") {
+  const strong = mode === "strong";
+  const medium = mode === "medium";
+  const protectedMode = medium || strong;
+  ctx.save();
+  ctx.strokeStyle = strong
+    ? "rgba(123, 63, 161, 0.19)"
+    : protectedMode
+      ? "rgba(123, 63, 161, 0.16)"
+      : "rgba(123, 63, 161, 0.075)";
+  ctx.lineWidth = strong ? 1.25 : protectedMode ? 1.15 : 0.7;
+  const lineStep = strong ? 54 : protectedMode ? 72 : 118;
+  for (let y = -width; y < height + width; y += lineStep) {
+    ctx.beginPath();
+    ctx.moveTo(0, y);
+    ctx.lineTo(width, y + width * 0.18);
+    ctx.stroke();
+  }
+
+  if (protectedMode) {
+    ctx.strokeStyle = strong ? "rgba(215, 38, 56, 0.11)" : "rgba(215, 38, 56, 0.095)";
+    ctx.lineWidth = strong ? 1 : 0.9;
+    for (let y = 40; y < height + width; y += 146) {
+      ctx.beginPath();
+      ctx.moveTo(width, y - width * 0.13);
+      ctx.lineTo(0, y);
+      ctx.stroke();
+    }
+
+    ctx.strokeStyle = strong ? "rgba(32, 33, 42, 0.18)" : "rgba(32, 33, 42, 0.13)";
+    ctx.lineWidth = strong ? 0.95 : 0.8;
+    for (let y = 34; y < height; y += 54) {
+      const shift = Math.floor(y / 54) % 3;
+      for (let x = 18 + shift * 17; x < width; x += 94) {
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+        ctx.lineTo(x + 12, y + (shift - 1) * 3);
+        ctx.stroke();
+      }
+    }
+  }
+
+  if (strong) {
+    const fragments = ["丨", "一", "丶", "丿"];
+    ctx.fillStyle = "rgba(32, 33, 42, 0.18)";
+    ctx.font = `700 9px ${FONT_FAMILY}`;
+    ctx.textAlign = "center";
+    for (let y = 20; y < height; y += 36) {
+      const row = Math.floor(y / 36);
+      for (let x = 22 + (row % 2) * 17; x < width; x += 68) {
+        ctx.fillText(fragments[(row + Math.floor(x / 68)) % fragments.length], x, y);
+      }
+    }
+
+    const decoys = ["评分", "依据", "备注", "分类", "条目"];
+    ctx.fillStyle = "rgba(123, 63, 161, 0.17)";
+    ctx.font = `650 10px ${FONT_FAMILY}`;
+    for (let y = 30; y < height; y += 64) {
+      const row = Math.floor(y / 64);
+      for (let x = 42 + (row % 2) * 46; x < width; x += 138) {
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.rotate(((row + Math.floor(x / 138)) % 2 ? 1 : -1) * 0.2);
+        ctx.fillText(decoys[(row + Math.floor(x / 138)) % decoys.length], 0, 0);
+        ctx.restore();
+      }
+    }
+    ctx.textAlign = "left";
+  }
+  ctx.restore();
+}
+
 const IMG_COLORS = {
-  dark: "#25242A",
+  dark: "#20212A",
   muted: "#7D7A84",
   faint: "#AAA7B0",
-  scoreRed: "#D81F2A", // 分数专用：鲜艳红
+  scoreRed: "#D72638",
   // 扣分 / 总评：红
-  red: "#D6342E",
-  redSoft: "#FFF1EE",
-  redTint: "#FCE2DE",
-  redLine: "#F0C4BB",
-  bannerBg: "#FDECEC",
-  bannerText: "#7A1A1F",
+  red: "#D72638",
+  redSoft: "#FFFFFF",
+  redTint: "#FFF1F0",
+  redLine: "#EED8D6",
+  bannerBg: "#FFFDFC",
+  bannerText: "#8A2E36",
   // 结构 / 备注：紫
   line: "#7B4A86",
   purple: "#7B3FA1",
-  purpleSoft: "#F2E7F8",
-  purplePale: "#FBF7FD",
-  purpleLine: "#E2D1E9",
+  purpleSoft: "#F6EFFA",
+  purplePale: "#FDFBFF",
+  purpleLine: "#E4D6EA",
   // 加分：绿
   green: "#3D9A55",
-  greenSoft: "#EFF9F1",
-  greenLine: "#BFE5C7",
+  greenSoft: "#FFFFFF",
+  greenLine: "#D9E8DD",
   // 限制项：橙
-  orange: "#D5841F",
-  orangeSoft: "#FFF3E0",
-  orangeLine: "#F1C57C",
-  graySoft: "#F5F5F7",
-  grayLine: "#E5E3E9",
+  orange: "#C97925",
+  orangeSoft: "#FFFFFF",
+  orangeLine: "#EADCC8",
+  graySoft: "#FFFFFF",
+  grayLine: "#E7E0EA",
   badgeBg: "#EFEEF1",
   bar: "#CFCBD6",
   noteText: "#7B3FA1", // 备注：紫色
 };
 
-const FONT_FAMILY = '"Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC", sans-serif';
+const FONT_FAMILY =
+  '"Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC", "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif';
 
-// 把所有规则拆成「命中（含备注）」与「未命中」两组
 function buildSplitRows(state) {
   const selected = [];
   const unselected = [];
@@ -413,7 +569,7 @@ function buildSplitRows(state) {
     kind: "bonus",
     qid: "加分",
     value: state.bonus ? `✓ +${state.cappedBonus || 0}分` : "未加分",
-    title: "从女男平等发展为全女，可加一分（不超过上限）。",
+    title: "从女男平等发展为全女，可加一分。不超过上限。",
     note: "",
     isChecked: Boolean(state.bonus),
   };
@@ -428,8 +584,8 @@ function buildSplitRows(state) {
     const isCap = rule.cap !== undefined;
     const kind = isCap ? "cap" : "deduct";
     let value;
-    if (isCap) value = isChecked ? `限制≤${rule.cap}` : "未命中";
-    else value = isChecked ? `✂ -${rule.points}分` : "未命中";
+    if (isCap) value = isChecked ? `限制≤${rule.cap}` : "○ 0";
+    else value = isChecked ? `✂︎ -${rule.points}分` : "○ 0";
 
     const row = {
       kind,
@@ -447,29 +603,31 @@ function buildSplitRows(state) {
   return { selected, unselected };
 }
 
-// 生成一张图片（命中 / 未命中各一张）
 function renderCard(state, rows, config) {
   const width = 920;
+  const scale = 2;
   const padding = 44;
   const contentWidth = width - padding * 2;
   const scoreBlockWidth = 200;
   const qidWidth = 88;
-  const valueWidth = 132;
-  const textX = padding + qidWidth + 18;
-  const valueX = width - padding - valueWidth;
-  const rowTextWidth = valueX - textX - 16;
+  const compact = config.variant !== "selected";
+  const valueWidth = compact ? 116 : 132;
+  const qidX = padding + 28;
+  const textX = padding + qidWidth + 30;
+  const valueX = width - padding - valueWidth - (compact ? 20 : 14);
+  const rowTextWidth = valueX - textX - (compact ? 28 : 22);
   const rowGap = 12;
   const c = IMG_COLORS;
   const ff = FONT_FAMILY;
-  const scoreColor = c.scoreRed;
-  const compact = config.variant !== "selected";
   const showMeta = !compact;
   const showScore = !compact;
-  const showSummary = Boolean(config.showSummary) && !compact;
+  const showSummary = !compact;
   const showBanner = Boolean(config.overallNote) && !compact;
   const showFooter = !compact;
+  const scoreColor = c.scoreRed;
+  const protectionMode = ["medium", "strong"].includes(config.protectionMode) ? config.protectionMode : "light";
   const footerText =
-    "以上减分情节楼主应当排雷；若未排雷，组员指出应当接受补充。打分表来源：世界莴苣联盟打分表 · 导出自本网站。";
+    "以上减分情节楼主应当排雷；若未排雷，组员指出应当接受补充。打分表来源：世界全女联盟打分表。";
 
   const now = new Date().toLocaleString("zh-CN", {
     year: "numeric",
@@ -482,7 +640,6 @@ function renderCard(state, rows, config) {
   const canvas = document.createElement("canvas");
   const ctx = canvas.getContext("2d");
 
-  // ===== 测量阶段（仅依赖字体设置） =====
   const titleText = `《${state.workTitle || "未填写作品名称"}》`;
   const titleFont = compact ? `800 30px ${ff}` : `900 38px ${ff}`;
   const titleLH = compact ? 40 : 46;
@@ -495,33 +652,27 @@ function renderCard(state, rows, config) {
   let metaH = 0;
   if (showMeta) {
     ctx.font = `18px ${ff}`;
-    const metaLine1 = `作者：${state.author || "未填写"}　来源：${state.sourcePlatform || "未填写"}`;
-    const metaLine2 = `分类：${state.type.label}（上限${state.type.max}分）　导出：${now}`;
-    metaLines = wrapText(ctx, metaLine1, titleAreaWidth).concat(
-      wrapText(ctx, metaLine2, titleAreaWidth),
-    );
+    const metaLine1 = `作者：${state.author || "未填写"}　来源平台：${state.sourcePlatform || "未填写"}`;
+    const metaLine2 = `分类：${state.type.label}（上限${state.type.max}分）`;
+    metaLines = wrapText(ctx, metaLine1, titleAreaWidth).concat(wrapText(ctx, metaLine2, titleAreaWidth));
     metaH = metaLines.length * 26;
   }
 
   const chipH = 36;
-  const headerContentH = compact
-    ? titleH + 14 + chipH
-    : Math.max(titleH + 12 + metaH + 14 + chipH, 100);
+  const headerContentH = compact ? titleH + 14 + chipH : Math.max(titleH + 12 + metaH + 14 + chipH, 104);
 
-  // 总评横幅（仅命中图，且有备注时）
   let bannerLines = [];
   let bannerH = 0;
   if (showBanner) {
-    ctx.font = `700 20px ${ff}`;
+    ctx.font = `650 20px ${ff}`;
     bannerLines = wrapText(ctx, config.overallNote, contentWidth - 64);
     bannerH = 20 + 30 + 10 + bannerLines.length * 30 + 22;
   }
 
-  const summaryH = showSummary ? 120 : 0;
+  const summaryH = showSummary ? 112 : 0;
 
-  // 行测量
   const rowMeta = rows.map((row) => {
-    const hasSub = Boolean(row.note); // 分类说明或备注，统一用紫色行内显示
+    const hasSub = Boolean(row.note);
     const active = row.isChecked || hasSub || row.kind === "type";
     const lh = active ? 31 : 26;
 
@@ -530,14 +681,14 @@ function renderCard(state, rows, config) {
 
     let sLines = [];
     if (hasSub) {
-      ctx.font = `700 17px ${ff}`;
-      sLines = wrapText(ctx, `备注　${row.note}`, rowTextWidth);
+      ctx.font = row.kind === "type" ? `600 14px ${ff}` : `700 17px ${ff}`;
+      sLines = wrapText(ctx, row.kind === "type" ? row.note : `备注　${row.note}`, rowTextWidth);
     }
 
-    let h = 18 + tLines.length * lh;
-    if (hasSub) h += sLines.length * 26 + 8;
-    h += 18;
-    h = Math.max(h, active ? 74 : 58);
+    let h = 14 + tLines.length * lh;
+    if (hasSub) h += sLines.length * (row.kind === "type" ? 21 : 26) + 8;
+    h += 14;
+    h = Math.max(h, hasSub ? 76 : active ? 64 : 52);
 
     return { height: h, active, titleLH: lh, tLines, sLines, hasSub };
   });
@@ -550,12 +701,11 @@ function renderCard(state, rows, config) {
     footerH = footerLines.length * 23;
   }
 
-  // 计算总高度（与绘制阶段步进保持一致）
-  let total = padding + headerContentH + 16; // 分割线位置
-  total += 18; // 分割线后空隙
+  let total = padding + headerContentH + 16;
+  total += 18;
   if (showBanner) total += bannerH + 18;
   if (showSummary) total += summaryH + 18;
-  total += 6; // 行前小间距（已去掉小节标题）
+  total += 6;
   rowMeta.forEach((m) => {
     total += m.height + rowGap;
   });
@@ -563,34 +713,24 @@ function renderCard(state, rows, config) {
   total += padding;
   const totalHeight = total;
 
-  // 高清缩放：尽量 3 倍，超出画布面积上限时自动降，保证手机端不渲染失败
-  const maxArea = 16500000;
-  let scale = 3;
-  if (width * scale * totalHeight * scale > maxArea) {
-    scale = Math.max(1, Math.sqrt(maxArea / (width * totalHeight)));
-  }
-
   canvas.width = Math.round(width * scale);
   canvas.height = Math.round(totalHeight * scale);
   ctx.scale(scale, scale);
 
-  // ===== 绘制阶段 =====
   ctx.fillStyle = "#ffffff";
   ctx.fillRect(0, 0, width, totalHeight);
+  drawOcrBackground(ctx, width, totalHeight, protectionMode);
 
   ctx.textAlign = "left";
 
-  // 标题
   ctx.font = titleFont;
   drawLines(ctx, titleLines, padding, padding + (compact ? 30 : 34), titleLH, c.dark);
 
-  // 元信息（仅命中图）
   if (showMeta) {
     ctx.font = `18px ${ff}`;
     drawLines(ctx, metaLines, padding, padding + titleH + 12 + 18, 26, c.muted);
   }
 
-  // 小节标签 chip（命中图紫色，参考图未命中保持中性灰）
   const chipTop = compact ? padding + titleH + 14 : padding + titleH + 12 + metaH + 14;
   ctx.font = `800 16px ${ff}`;
   const chipTextW = ctx.measureText(config.tag).width;
@@ -601,57 +741,48 @@ function renderCard(state, rows, config) {
   ctx.fillStyle = compact ? c.muted : c.purple;
   ctx.fillText(config.tag, padding + 14, chipTop + chipH / 2 + 6);
 
-  // 总分（右上角，鲜艳红色，仅命中图）
   if (showScore) {
     ctx.textAlign = "right";
     ctx.fillStyle = scoreColor;
-    ctx.font = `800 19px ${ff}`;
-    ctx.fillText("总分", width - padding, padding + 26);
     ctx.font = `900 62px ${ff}`;
     ctx.fillText(`${state.score} 分`, width - padding, padding + 90);
     ctx.textAlign = "left";
   }
 
-  // 分割线（紫色）
   let y = padding + headerContentH + 16;
   ctx.strokeStyle = c.line;
-  ctx.lineWidth = compact ? 2 : 3;
+  ctx.lineWidth = 2;
   ctx.beginPath();
   ctx.moveTo(padding, y);
   ctx.lineTo(width - padding, y);
   ctx.stroke();
   y += 18;
 
-  // 总评横幅（最前面）
   if (showBanner) {
     roundRect(ctx, padding, y, contentWidth, bannerH, 14);
     ctx.fillStyle = c.bannerBg;
     ctx.fill();
     ctx.fillStyle = c.red;
-    roundRect(ctx, padding, y, 8, bannerH, 4);
+    roundRect(ctx, padding, y, 4, bannerH, 2);
     ctx.fill();
-
     ctx.fillStyle = c.red;
-    ctx.font = `900 20px ${ff}`;
+    ctx.font = `850 20px ${ff}`;
     ctx.fillText("◆ 总评 · 必读", padding + 24, y + 32);
-
-    ctx.font = `700 20px ${ff}`;
-    drawLines(ctx, bannerLines, padding + 24, y + 32 + 36, 30, c.bannerText);
+    ctx.font = `650 20px ${ff}`;
+    drawLines(ctx, bannerLines, padding + 24, y + 68, 30, c.bannerText);
     y += bannerH + 18;
   }
 
-  // 汇总卡（仅命中图）
   if (showSummary) {
     roundRect(ctx, padding, y, contentWidth, summaryH, 14);
     ctx.fillStyle = c.purplePale;
     ctx.fill();
     ctx.strokeStyle = c.purpleLine;
-    ctx.lineWidth = 1.5;
+    ctx.lineWidth = 1.2;
     ctx.stroke();
-
     ctx.fillStyle = c.purple;
-    ctx.font = `900 22px ${ff}`;
-    ctx.fillText("分数汇总", padding + 22, y + 36);
+    ctx.font = `850 20px ${ff}`;
+    ctx.fillText("本节 / 汇总", padding + 20, y + 32);
 
     const summaryItems = [
       ["分类上限", `${state.type.max}分`],
@@ -664,18 +795,20 @@ function renderCard(state, rows, config) {
     summaryItems.forEach(([label, value], index) => {
       const x = padding + 22 + itemWidth * index;
       ctx.fillStyle = c.muted;
-      ctx.font = `16px ${ff}`;
-      ctx.fillText(label, x, y + 74);
-      ctx.fillStyle = label === "最终得分" ? scoreColor : c.dark;
-      ctx.font = `900 24px ${ff}`;
-      ctx.fillText(value, x, y + 104);
+      ctx.font = `15px ${ff}`;
+      ctx.fillText(label, x, y + 68);
+      let valueColor = c.dark;
+      if (label === "最终得分" || label === "扣分") valueColor = c.scoreRed;
+      if (label === "限制项") valueColor = c.orange;
+      ctx.fillStyle = valueColor;
+      ctx.font = `850 22px ${ff}`;
+      ctx.fillText(value, x, y + 96);
     });
-    y += summaryH + 18;
+    y += summaryH + 24;
   }
 
   y += 6;
 
-  // 行
   rows.forEach((row, index) => {
     const m = rowMeta[index];
     const rowHeight = m.height;
@@ -687,14 +820,14 @@ function renderCard(state, rows, config) {
     let fill = active ? "#FFFFFF" : c.graySoft;
     let stroke = c.grayLine;
     if (row.kind === "type") {
-      fill = c.purplePale;
+      fill = "#FFFFFF";
       stroke = c.purpleLine;
     } else if (isBonus) {
-      fill = c.greenSoft;
-      stroke = c.greenLine;
+      fill = "#FFFFFF";
+      stroke = c.grayLine;
     } else if (isCap) {
-      fill = c.orangeSoft;
-      stroke = c.orangeLine;
+      fill = "#FFFFFF";
+      stroke = c.grayLine;
     } else if (isDeduct) {
       fill = c.redSoft;
       stroke = c.redLine;
@@ -708,77 +841,110 @@ function renderCard(state, rows, config) {
     ctx.stroke();
 
     // 左侧色条
-    let barColor = active ? c.line : "#DAD7DF";
-    if (isDeduct) barColor = c.red;
-    else if (isCap) barColor = c.orange;
-    else if (isBonus) barColor = c.green;
+    let barColor = "#D8D4DE";
+    let barWidth = 4;
+    if (row.kind === "type") {
+      barColor = c.purple;
+      barWidth = 7;
+    } else if (isDeduct) {
+      barColor = c.scoreRed;
+      barWidth = 8;
+    } else if (isCap) {
+      barColor = c.orange;
+      barWidth = 6;
+    } else if (isBonus) {
+      barColor = c.green;
+      barWidth = 6;
+    }
     ctx.fillStyle = barColor;
-    roundRect(ctx, padding, y, 6, rowHeight, 3);
+    roundRect(ctx, padding + 1, y + 1, barWidth, rowHeight - 2, 3);
     ctx.fill();
 
     // 题号徽章（紫色）
-    roundRect(ctx, padding + 16, y + 16, qidWidth - 26, 36, 9);
-    ctx.fillStyle = active ? c.purpleSoft : "#ECEAF0";
+    const badgeY = y + (rowHeight - 36) / 2;
+    roundRect(ctx, qidX, badgeY, qidWidth - 26, 36, 9);
+    ctx.fillStyle = "#FAF6FC";
     ctx.fill();
-    ctx.fillStyle = active ? c.purple : c.faint;
+    ctx.strokeStyle = "#E9DDED";
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    ctx.fillStyle = c.purple;
     ctx.font = `900 16px ${ff}`;
     ctx.textAlign = "center";
-    ctx.fillText(row.qid, padding + 16 + (qidWidth - 26) / 2, y + 39);
+    ctx.fillText(row.qid, qidX + (qidWidth - 26) / 2, badgeY + 23);
     ctx.textAlign = "left";
 
     // 分值徽章
-    drawValueBadge(ctx, row, valueX, y + 16, valueWidth, 36);
+    drawValueBadge(ctx, row, valueX, badgeY, valueWidth, 36);
 
     // 标题
     ctx.font = active ? `800 22px ${ff}` : `600 18px ${ff}`;
-    const titleColor = active ? c.dark : c.faint;
-    let cursor = y + 18;
+    const titleColor = active ? c.dark : "#8F8A96";
+    let cursor = y + 14;
     drawLines(ctx, m.tLines, textX, cursor + m.titleLH - 8, m.titleLH, titleColor);
     cursor += m.tLines.length * m.titleLH;
 
     // 分类说明 / 备注（统一紫色行内显示）
-    if (m.hasSub) {
+    if (m.hasSub && row.kind === "type") {
+      ctx.font = `600 14px ${ff}`;
+      drawLines(ctx, m.sLines, textX, cursor + 6 + 14, 21, "#68636F");
+    } else if (m.hasSub) {
       ctx.font = `700 17px ${ff}`;
-      drawLines(ctx, m.sLines, textX, cursor + 8 + 17, 26, c.noteText);
+      drawLines(ctx, m.sLines, textX, cursor + 6 + 17, 26, c.noteText);
     }
 
     y += rowHeight + rowGap;
   });
 
-  // 页脚（仅命中图）
   if (showFooter) {
     ctx.font = `15px ${ff}`;
     drawLines(ctx, footerLines, padding, y + 8, 23, c.faint);
   }
 
-  return new Promise((resolve) => {
-    canvas.toBlob((blob) => resolve(blob), "image/jpeg", 0.96);
-  });
+  drawOcrOverlay(ctx, width, totalHeight, protectionMode);
+
+  const dataUrl = canvas.toDataURL("image/jpeg", 0.95);
+  return {
+    blob: dataUrlToBlob(dataUrl),
+    dataUrl,
+  };
 }
 
 function drawValueBadge(ctx, row, x, y, w, h) {
   const c = IMG_COLORS;
   const ff = FONT_FAMILY;
   const active = row.isChecked;
-  let fill = c.badgeBg;
+  let fill = "#F5F4F7";
   let text = c.faint;
+  let stroke = "#E2DFE7";
   if (row.kind === "type") {
     fill = c.purpleSoft;
     text = c.purple;
+    stroke = c.purpleLine;
   } else if (row.kind === "bonus" && active) {
-    fill = c.greenSoft;
+    fill = "#F1FAF4";
     text = c.green;
+    stroke = c.greenLine;
   } else if (row.kind === "cap" && active) {
-    fill = c.orangeSoft;
+    fill = "#FFF7E8";
     text = c.orange;
+    stroke = c.orangeLine;
   } else if (row.kind === "deduct" && active) {
     fill = c.redTint;
     text = c.red;
+    stroke = c.redLine;
+  } else if (row.kind === "note") {
+    fill = c.purpleSoft;
+    text = c.purple;
+    stroke = c.purpleLine;
   }
 
   roundRect(ctx, x, y, w, h, 12);
   ctx.fillStyle = fill;
   ctx.fill();
+  ctx.strokeStyle = stroke;
+  ctx.lineWidth = 1.2;
+  ctx.stroke();
   ctx.fillStyle = text;
   ctx.font = row.value.length > 6 ? `800 15px ${ff}` : `800 19px ${ff}`;
   ctx.textAlign = "center";
@@ -788,7 +954,17 @@ function drawValueBadge(ctx, row, x, y, w, h) {
 
 function isInAppWebView() {
   const ua = navigator.userAgent.toLowerCase();
-  return ua.includes("micromessenger") || ua.includes("qq/") || ua.includes("dingtalk") || ua.includes("wxwork");
+  return (
+    ua.includes("micromessenger") ||
+    ua.includes("douban") ||
+    ua.includes("qq/") ||
+    ua.includes("dingtalk") ||
+    ua.includes("wxwork")
+  );
+}
+
+function isMobileBrowser() {
+  return /android|iphone|ipad|ipod|mobile/i.test(navigator.userAgent) || window.matchMedia("(max-width: 640px)").matches;
 }
 
 function clearExportImages() {
@@ -798,16 +974,16 @@ function clearExportImages() {
   exportImages = [];
 }
 
-function showExportModal(images) {
+function showExportModal(images, modeLabel) {
   clearExportImages();
   exportImages = images.map((img) => ({ ...img, url: URL.createObjectURL(img.blob) }));
 
-  els.imageList.innerHTML = exportImages
+  els.imageList.innerHTML = `<div class="export-mode-summary">当前导出：<strong>${modeLabel}</strong></div>` + exportImages
     .map(
       (img, i) => `
       <figure class="export-figure">
-        <figcaption><span class="fig-tag">${img.label}</span><span class="fig-hint">手机可长按图片保存，或点下方按钮</span></figcaption>
-        <img src="${img.url}" alt="${img.label}" />
+        <figcaption><span class="fig-tag">${img.label}</span><span class="fig-hint">若 App 内置浏览器拦截下载，请长按下面图片保存</span></figcaption>
+        <img src="${img.dataUrl}" alt="${img.label}" />
         <div class="figure-actions">
           <a class="dl" href="${img.url}" download="${img.filename}">下载这张</a>
           <button type="button" class="copy" data-index="${i}">复制</button>
@@ -820,7 +996,19 @@ function showExportModal(images) {
   els.imageModal.setAttribute("aria-hidden", "false");
 }
 
-async function exportImage() {
+function openExportModeModal() {
+  els.exportModeModal.classList.add("show");
+  els.exportModeModal.setAttribute("aria-hidden", "false");
+}
+
+function closeExportModeModal() {
+  els.exportModeModal.classList.remove("show");
+  els.exportModeModal.setAttribute("aria-hidden", "true");
+}
+
+async function generateExportImages(protectionMode) {
+  const safeMode = ["medium", "strong"].includes(protectionMode) ? protectionMode : "light";
+  const modeLabel = safeMode === "strong" ? "强干扰" : safeMode === "medium" ? "中等干扰" : "弱干扰";
   const state = collectState();
   const triggerBtns = [els.exportImageBtn, els.mobileSaveBtn, els.printBtn].filter(Boolean);
   const originals = triggerBtns.map((b) => b.innerHTML);
@@ -834,28 +1022,41 @@ async function exportImage() {
     const base = (state.workTitle || "文艺作品").replace(/[\\/:*?"<>|]/g, "_");
     const images = [];
 
-    const blob1 = await renderCard(state, selected, {
+    const selectedImage = renderCard(state, selected, {
       variant: "selected",
-      tag: "① 命中项目 · 含备注",
-      showSummary: true,
+      tag: "① 扣分题目",
       overallNote: state.overallNote,
+      protectionMode: safeMode,
     });
-    if (blob1) images.push({ blob: blob1, label: "① 命中与备注", filename: `${base}-打分-命中.jpg` });
+    if (selectedImage) {
+      images.push({
+        blob: selectedImage.blob,
+        dataUrl: selectedImage.dataUrl,
+        label: "① 扣分与备注",
+        filename: `${base}-打分-扣分-${modeLabel}.jpg`,
+      });
+    }
 
     if (unselected.length) {
-      const blob2 = await renderCard(state, unselected, {
+      const unselectedImage = renderCard(state, unselected, {
         variant: "unselected",
-        tag: "② 未命中项目（参考）",
-        showSummary: false,
+        tag: "② 未扣分题目（参考）",
         overallNote: "",
+        protectionMode: safeMode,
       });
-      if (blob2) images.push({ blob: blob2, label: "② 未命中（参考）", filename: `${base}-打分-未命中.jpg` });
+      if (unselectedImage) {
+        images.push({
+          blob: unselectedImage.blob,
+          dataUrl: unselectedImage.dataUrl,
+          label: "② 未扣分（参考）",
+          filename: `${base}-打分-未扣分-${modeLabel}.jpg`,
+        });
+      }
     }
 
     if (!images.length) return;
-    showExportModal(images);
-
-    if (!isInAppWebView()) {
+    showExportModal(images, modeLabel);
+    if (!isMobileBrowser() && !isInAppWebView()) {
       images.forEach((img) => downloadBlob(img.blob, img.filename));
     }
   } finally {
@@ -909,16 +1110,47 @@ function resetForm(clearSaved = true) {
   isRestoring = false;
 }
 
+function confirmAndReset() {
+  if (window.confirm("确定要清空当前填写内容吗？此操作不可撤销。")) {
+    resetForm(true);
+  }
+}
+
+function toggleCardCheckbox(event) {
+  if (event.target.closest("input, textarea, button, a, label")) return;
+
+  const card = event.target.closest(".rule-card, .bonus-card");
+  if (!card) return;
+
+  const checkbox = card.querySelector('input[type="checkbox"]');
+  if (!checkbox) return;
+
+  checkbox.checked = !checkbox.checked;
+  checkbox.dispatchEvent(new Event("change", { bubbles: true }));
+}
+
 // 核心初始化流
 renderRules();
 restoreFormState();
 els.form.addEventListener("input", update);
 els.form.addEventListener("change", update);
-els.exportImageBtn.addEventListener("click", exportImage);
-els.mobileSaveBtn.addEventListener("click", exportImage);
-els.clearBtn.addEventListener("click", () => resetForm(true));
-els.mobileClearBtn.addEventListener("click", () => resetForm(true));
-els.printBtn.addEventListener("click", exportImage);
+els.rules.addEventListener("click", toggleCardCheckbox);
+document.querySelector(".bonus-card")?.addEventListener("click", toggleCardCheckbox);
+els.exportImageBtn.addEventListener("click", openExportModeModal);
+els.mobileSaveBtn.addEventListener("click", openExportModeModal);
+els.clearBtn.addEventListener("click", confirmAndReset);
+els.mobileClearBtn.addEventListener("click", confirmAndReset);
+els.printBtn.addEventListener("click", openExportModeModal);
+els.closeExportModeModal.addEventListener("click", closeExportModeModal);
+els.exportModeModal.addEventListener("click", (event) => {
+  if (event.target === els.exportModeModal) closeExportModeModal();
+});
+els.exportModeOptions.addEventListener("click", (event) => {
+  const button = event.target.closest("[data-export-mode]");
+  if (!button) return;
+  closeExportModeModal();
+  generateExportImages(button.dataset.exportMode);
+});
 els.closeImageModal.addEventListener("click", closeImageModal);
 els.imageModal.addEventListener("click", (event) => {
   if (event.target === els.imageModal) closeImageModal();

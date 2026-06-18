@@ -3,30 +3,13 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <title>世界莴苣联盟打分表</title>
+    <title>世界全女联盟打分表</title>
     <link rel="icon" href="data:," />
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
     <div class="mobile-scorebar" id="mobileScorebar" aria-live="polite">
-      <div>
-        <span>当前得分</span>
-        <strong id="mobileScore">10</strong>
-      </div>
-      <div>
-        <span>扣分</span>
-        <strong id="mobileDeduct">0</strong>
-      </div>
-      <button type="button" id="mobileSaveBtn" aria-label="保存图片" title="保存图片">
-        <svg viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M15 8h.01" />
-          <path d="M3 6a3 3 0 0 1 3-3h12a3 3 0 0 1 3 3v12a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3z" />
-          <path d="m3 16 5-5a2 2 0 0 1 3 0l5 5" />
-          <path d="m14 14 1-1a2 2 0 0 1 3 0l3 3" />
-        </svg>
-        保存
-      </button>
-      <button type="button" id="mobileClearBtn" aria-label="清空" title="清空">
+      <button type="button" id="mobileClearBtn" class="mobile-clear-action" aria-label="清空" title="清空">
         <svg viewBox="0 0 24 24" aria-hidden="true">
           <path d="M3 6h18" />
           <path d="M8 6V4h8v2" />
@@ -36,14 +19,34 @@
         </svg>
         清空
       </button>
+      <div>
+        <span>得分</span>
+        <strong id="mobileScore">10</strong>
+      </div>
+      <div>
+        <span>扣分</span>
+        <strong id="mobileDeduct">0</strong>
+      </div>
+      <button type="button" id="mobileSaveBtn" class="mobile-download-action" aria-label="下载图片" title="下载图片">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M15 8h.01" />
+          <path d="M3 6a3 3 0 0 1 3-3h12a3 3 0 0 1 3 3v12a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3z" />
+          <path d="m3 16 5-5a2 2 0 0 1 3 0l5 5" />
+          <path d="m14 14 1-1a2 2 0 0 1 3 0l3 3" />
+        </svg>
+        下载
+      </button>
     </div>
 
     <main class="app">
       <section class="hero">
         <div>
-          <p class="eyebrow">本打分细则文艺作品通用</p>
-          <h1>世界莴苣联盟打分表</h1>
-          <p class="hero-copy">填入作品信息，勾选扣分点并填写依据，系统自动计算分数并生成图片记录。</p>
+          <h1>
+            <a class="title-link" href="https://www.douban.com/group/topic/487038490/" target="_blank" rel="noopener noreferrer">
+              世界全女联盟打分表
+            </a>
+          </h1>
+          <p class="hero-copy">技术与域名支持：<a class="hero-link" href="https://herarchive.feminism-nv.space/" target="_blank" rel="noopener noreferrer">全女评审团</a></p>
         </div>
         <div class="score-meter" aria-live="polite">
           <span>当前得分</span>
@@ -205,18 +208,50 @@
             </button>
           </div>
 
-          <p class="save-status" id="saveStatus">内容会自动保存在当前浏览器中（换浏览器/换手机不会同步）；导出会生成「命中」「未命中」两张高清图，分开发可防止画质被压。</p>
+          <p class="save-status" id="saveStatus">内容会自动保存在当前浏览器中（换浏览器/换手机不会同步）；导出会生成「扣分」「未扣分」两张高清图，分开发可防止画质被压。</p>
           <p class="source-note">以上减分情节楼主应当排雷；若未排雷，组员指出应当接受补充。</p>
         </aside>
       </section>
     </main>
+
+    <div class="export-mode-modal" id="exportModeModal" aria-hidden="true">
+      <div class="export-mode-card" role="dialog" aria-modal="true" aria-labelledby="exportModeTitle">
+        <header>
+          <div>
+            <h2 id="exportModeTitle">选择导出效果</h2>
+            <p>三种模式都会生成“扣分题目”和“未扣分题目”两张图。</p>
+          </div>
+          <button class="icon-button" type="button" id="closeExportModeModal" aria-label="关闭" title="关闭">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M18 6 6 18" />
+              <path d="m6 6 12 12" />
+            </svg>
+          </button>
+        </header>
+        <div class="export-mode-options" id="exportModeOptions">
+          <button type="button" class="export-mode-option" data-export-mode="light">
+            <span class="mode-name">弱干扰</span>
+            <span class="mode-description">浅色水印、页面干净</span>
+          </button>
+          <button type="button" class="export-mode-option is-medium" data-export-mode="medium">
+            <span class="mode-name">中等干扰</span>
+            <span class="mode-description">稍深颜色水印、兼具观感和部分干扰需求</span>
+          </button>
+          <button type="button" class="export-mode-option is-strong" data-export-mode="strong">
+            <span class="mode-name">强干扰</span>
+            <span class="mode-description">超浓色水印，发不出贴的建议尝试</span>
+          </button>
+        </div>
+        <p class="mode-warning">由于豆瓣审核机制，根据需求选择水印干扰版本，会牺牲一定观感。</p>
+      </div>
+    </div>
 
     <div class="image-modal" id="imageModal" aria-hidden="true">
       <div class="image-card" role="dialog" aria-modal="true" aria-labelledby="imageModalTitle">
         <header>
           <div>
             <h2 id="imageModalTitle">导出图片预览</h2>
-            <p>已生成两张高清图：①命中项目与备注、②未命中项目。分别保存发到豆瓣，可避免长图被压糊。手机长按图片即可保存。</p>
+              <p>已生成两张高清图：①扣分题目、②未扣分题目。<br />在 App 内置浏览器里面请长按图片保存，或分享/在系统浏览器打开后再保存。</p>
           </div>
           <button class="icon-button" type="button" id="closeImageModal" aria-label="关闭预览" title="关闭预览">
             <svg viewBox="0 0 24 24" aria-hidden="true">

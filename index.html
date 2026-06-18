@@ -46,7 +46,7 @@
               世界全女联盟打分表
             </a>
           </h1>
-          <p class="hero-copy">技术与域名支持：<a class="hero-link" href="https://herarchive.feminism-nv.space/" target="_blank" rel="noopener noreferrer">豆瓣全女评阅组</a></p>
+          <p class="hero-copy">技术与域名支持：<a class="hero-link" href="https://herarchive.feminism-nv.space/" target="_blank" rel="noopener noreferrer">全女评审团</a></p>
         </div>
         <div class="score-meter" aria-live="polite">
           <span>当前得分</span>
@@ -213,6 +213,38 @@
         </aside>
       </section>
     </main>
+
+    <div class="export-mode-modal" id="exportModeModal" aria-hidden="true">
+      <div class="export-mode-card" role="dialog" aria-modal="true" aria-labelledby="exportModeTitle">
+        <header>
+          <div>
+            <h2 id="exportModeTitle">选择导出效果</h2>
+            <p>三种模式都会生成“扣分题目”和“未扣分题目”两张图。</p>
+          </div>
+          <button class="icon-button" type="button" id="closeExportModeModal" aria-label="关闭" title="关闭">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M18 6 6 18" />
+              <path d="m6 6 12 12" />
+            </svg>
+          </button>
+        </header>
+        <div class="export-mode-options" id="exportModeOptions">
+          <button type="button" class="export-mode-option" data-export-mode="light">
+            <span class="mode-name">弱干扰</span>
+            <span class="mode-description">浅色水印、页面干净</span>
+          </button>
+          <button type="button" class="export-mode-option is-medium" data-export-mode="medium">
+            <span class="mode-name">中等干扰</span>
+            <span class="mode-description">稍深颜色水印、兼具观感和部分干扰需求</span>
+          </button>
+          <button type="button" class="export-mode-option is-strong" data-export-mode="strong">
+            <span class="mode-name">强干扰</span>
+            <span class="mode-description">超浓色水印，发不出贴的建议尝试</span>
+          </button>
+        </div>
+        <p class="mode-warning">由于豆瓣审核机制，根据需求选择水印干扰版本，会牺牲一定观感。</p>
+      </div>
+    </div>
 
     <div class="image-modal" id="imageModal" aria-hidden="true">
       <div class="image-card" role="dialog" aria-modal="true" aria-labelledby="imageModalTitle">

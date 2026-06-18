@@ -96,6 +96,9 @@ const els = {
   imageModal: document.querySelector("#imageModal"),
   imageList: document.querySelector("#imageList"),
   closeImageModal: document.querySelector("#closeImageModal"),
+  exportModeModal: document.querySelector("#exportModeModal"),
+  closeExportModeModal: document.querySelector("#closeExportModeModal"),
+  exportModeOptions: document.querySelector("#exportModeOptions"),
 };
 
 function ruleNumber(rule) {
@@ -381,6 +384,138 @@ function drawLines(ctx, lines, x, firstBaseline, lineHeight, color) {
   });
 }
 
+function drawOcrBackground(ctx, width, height, mode = "light") {
+  const strong = mode === "strong";
+  const medium = mode === "medium";
+  const protectedMode = medium || strong;
+  ctx.save();
+
+  // Faint deterministic dots survive JPEG compression without becoming
+  // visually noisy on a phone-sized preview.
+  ctx.fillStyle = strong
+    ? "rgba(80, 70, 88, 0.14)"
+    : protectedMode
+      ? "rgba(80, 70, 88, 0.085)"
+      : "rgba(80, 70, 88, 0.045)";
+  const dotStep = strong ? 16 : protectedMode ? 22 : 28;
+  for (let y = 18; y < height; y += dotStep) {
+    const offset = Math.floor(y / dotStep) % 2 ? dotStep * 0.45 : 0;
+    for (let x = 14 + offset; x < width; x += dotStep) {
+      ctx.beginPath();
+      ctx.arc(x, y, strong ? 1.05 : protectedMode ? 0.85 : 0.65, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  // Repeated translucent text breaks up large clean OCR regions while
+  // remaining subordinate to the score content.
+  ctx.translate(width / 2, height / 2);
+  ctx.rotate(-Math.PI / 10);
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.font = `700 ${strong ? 22 : protectedMode ? 20 : 18}px ${FONT_FAMILY}`;
+  ctx.fillStyle = strong
+    ? "rgba(123, 63, 161, 0.22)"
+    : protectedMode
+      ? "rgba(123, 63, 161, 0.13)"
+      : "rgba(123, 63, 161, 0.055)";
+  const span = Math.hypot(width, height);
+  const rowStep = strong ? 76 : protectedMode ? 108 : 150;
+  const columnStep = strong ? 154 : protectedMode ? 190 : 230;
+  for (let y = -span; y <= span; y += rowStep) {
+    const rowOffset = Math.floor((y + span) / rowStep) % 2 ? columnStep / 2 : 0;
+    for (let x = -span + rowOffset; x <= span; x += columnStep) {
+      ctx.fillText("世界全女联盟打分表", x, y);
+    }
+  }
+
+  if (strong) {
+    ctx.rotate(Math.PI / 5);
+    ctx.font = `800 15px ${FONT_FAMILY}`;
+    ctx.fillStyle = "rgba(32, 33, 42, 0.18)";
+    for (let y = -span; y <= span; y += 58) {
+      const rowOffset = Math.floor((y + span) / 58) % 2 ? 62 : 0;
+      for (let x = -span + rowOffset; x <= span; x += 124) {
+        ctx.fillText("全女联盟", x, y);
+      }
+    }
+  }
+
+  ctx.restore();
+}
+
+function drawOcrOverlay(ctx, width, height, mode = "light") {
+  const strong = mode === "strong";
+  const medium = mode === "medium";
+  const protectedMode = medium || strong;
+  ctx.save();
+  ctx.strokeStyle = strong
+    ? "rgba(123, 63, 161, 0.19)"
+    : protectedMode
+      ? "rgba(123, 63, 161, 0.16)"
+      : "rgba(123, 63, 161, 0.075)";
+  ctx.lineWidth = strong ? 1.25 : protectedMode ? 1.15 : 0.7;
+  const lineStep = strong ? 54 : protectedMode ? 72 : 118;
+  for (let y = -width; y < height + width; y += lineStep) {
+    ctx.beginPath();
+    ctx.moveTo(0, y);
+    ctx.lineTo(width, y + width * 0.18);
+    ctx.stroke();
+  }
+
+  if (protectedMode) {
+    ctx.strokeStyle = strong ? "rgba(215, 38, 56, 0.11)" : "rgba(215, 38, 56, 0.095)";
+    ctx.lineWidth = strong ? 1 : 0.9;
+    for (let y = 40; y < height + width; y += 146) {
+      ctx.beginPath();
+      ctx.moveTo(width, y - width * 0.13);
+      ctx.lineTo(0, y);
+      ctx.stroke();
+    }
+
+    ctx.strokeStyle = strong ? "rgba(32, 33, 42, 0.18)" : "rgba(32, 33, 42, 0.13)";
+    ctx.lineWidth = strong ? 0.95 : 0.8;
+    for (let y = 34; y < height; y += 54) {
+      const shift = Math.floor(y / 54) % 3;
+      for (let x = 18 + shift * 17; x < width; x += 94) {
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+        ctx.lineTo(x + 12, y + (shift - 1) * 3);
+        ctx.stroke();
+      }
+    }
+  }
+
+  if (strong) {
+    const fragments = ["丨", "一", "丶", "丿"];
+    ctx.fillStyle = "rgba(32, 33, 42, 0.18)";
+    ctx.font = `700 9px ${FONT_FAMILY}`;
+    ctx.textAlign = "center";
+    for (let y = 20; y < height; y += 36) {
+      const row = Math.floor(y / 36);
+      for (let x = 22 + (row % 2) * 17; x < width; x += 68) {
+        ctx.fillText(fragments[(row + Math.floor(x / 68)) % fragments.length], x, y);
+      }
+    }
+
+    const decoys = ["评分", "依据", "备注", "分类", "条目"];
+    ctx.fillStyle = "rgba(123, 63, 161, 0.17)";
+    ctx.font = `650 10px ${FONT_FAMILY}`;
+    for (let y = 30; y < height; y += 64) {
+      const row = Math.floor(y / 64);
+      for (let x = 42 + (row % 2) * 46; x < width; x += 138) {
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.rotate(((row + Math.floor(x / 138)) % 2 ? 1 : -1) * 0.2);
+        ctx.fillText(decoys[(row + Math.floor(x / 138)) % decoys.length], 0, 0);
+        ctx.restore();
+      }
+    }
+    ctx.textAlign = "left";
+  }
+  ctx.restore();
+}
+
 const IMG_COLORS = {
   dark: "#20212A",
   muted: "#7D7A84",
@@ -490,6 +625,7 @@ function renderCard(state, rows, config) {
   const showBanner = Boolean(config.overallNote) && !compact;
   const showFooter = !compact;
   const scoreColor = c.scoreRed;
+  const protectionMode = ["medium", "strong"].includes(config.protectionMode) ? config.protectionMode : "light";
   const footerText =
     "以上减分情节楼主应当排雷；若未排雷，组员指出应当接受补充。打分表来源：世界全女联盟打分表。";
 
@@ -583,6 +719,7 @@ function renderCard(state, rows, config) {
 
   ctx.fillStyle = "#ffffff";
   ctx.fillRect(0, 0, width, totalHeight);
+  drawOcrBackground(ctx, width, totalHeight, protectionMode);
 
   ctx.textAlign = "left";
 
@@ -764,6 +901,8 @@ function renderCard(state, rows, config) {
     drawLines(ctx, footerLines, padding, y + 8, 23, c.faint);
   }
 
+  drawOcrOverlay(ctx, width, totalHeight, protectionMode);
+
   const dataUrl = canvas.toDataURL("image/jpeg", 0.95);
   return {
     blob: dataUrlToBlob(dataUrl),
@@ -835,11 +974,11 @@ function clearExportImages() {
   exportImages = [];
 }
 
-function showExportModal(images) {
+function showExportModal(images, modeLabel) {
   clearExportImages();
   exportImages = images.map((img) => ({ ...img, url: URL.createObjectURL(img.blob) }));
 
-  els.imageList.innerHTML = exportImages
+  els.imageList.innerHTML = `<div class="export-mode-summary">当前导出：<strong>${modeLabel}</strong></div>` + exportImages
     .map(
       (img, i) => `
       <figure class="export-figure">
@@ -857,7 +996,19 @@ function showExportModal(images) {
   els.imageModal.setAttribute("aria-hidden", "false");
 }
 
-async function exportImage(event) {
+function openExportModeModal() {
+  els.exportModeModal.classList.add("show");
+  els.exportModeModal.setAttribute("aria-hidden", "false");
+}
+
+function closeExportModeModal() {
+  els.exportModeModal.classList.remove("show");
+  els.exportModeModal.setAttribute("aria-hidden", "true");
+}
+
+async function generateExportImages(protectionMode) {
+  const safeMode = ["medium", "strong"].includes(protectionMode) ? protectionMode : "light";
+  const modeLabel = safeMode === "strong" ? "强干扰" : safeMode === "medium" ? "中等干扰" : "弱干扰";
   const state = collectState();
   const triggerBtns = [els.exportImageBtn, els.mobileSaveBtn, els.printBtn].filter(Boolean);
   const originals = triggerBtns.map((b) => b.innerHTML);
@@ -875,13 +1026,14 @@ async function exportImage(event) {
       variant: "selected",
       tag: "① 扣分题目",
       overallNote: state.overallNote,
+      protectionMode: safeMode,
     });
     if (selectedImage) {
       images.push({
         blob: selectedImage.blob,
         dataUrl: selectedImage.dataUrl,
         label: "① 扣分与备注",
-        filename: `${base}-打分-扣分.jpg`,
+        filename: `${base}-打分-扣分-${modeLabel}.jpg`,
       });
     }
 
@@ -890,19 +1042,20 @@ async function exportImage(event) {
         variant: "unselected",
         tag: "② 未扣分题目（参考）",
         overallNote: "",
+        protectionMode: safeMode,
       });
       if (unselectedImage) {
         images.push({
           blob: unselectedImage.blob,
           dataUrl: unselectedImage.dataUrl,
           label: "② 未扣分（参考）",
-          filename: `${base}-打分-未扣分.jpg`,
+          filename: `${base}-打分-未扣分-${modeLabel}.jpg`,
         });
       }
     }
 
     if (!images.length) return;
-    showExportModal(images);
+    showExportModal(images, modeLabel);
     if (!isMobileBrowser() && !isInAppWebView()) {
       images.forEach((img) => downloadBlob(img.blob, img.filename));
     }
@@ -983,11 +1136,21 @@ els.form.addEventListener("input", update);
 els.form.addEventListener("change", update);
 els.rules.addEventListener("click", toggleCardCheckbox);
 document.querySelector(".bonus-card")?.addEventListener("click", toggleCardCheckbox);
-els.exportImageBtn.addEventListener("click", exportImage);
-els.mobileSaveBtn.addEventListener("click", exportImage);
+els.exportImageBtn.addEventListener("click", openExportModeModal);
+els.mobileSaveBtn.addEventListener("click", openExportModeModal);
 els.clearBtn.addEventListener("click", confirmAndReset);
 els.mobileClearBtn.addEventListener("click", confirmAndReset);
-els.printBtn.addEventListener("click", exportImage);
+els.printBtn.addEventListener("click", openExportModeModal);
+els.closeExportModeModal.addEventListener("click", closeExportModeModal);
+els.exportModeModal.addEventListener("click", (event) => {
+  if (event.target === els.exportModeModal) closeExportModeModal();
+});
+els.exportModeOptions.addEventListener("click", (event) => {
+  const button = event.target.closest("[data-export-mode]");
+  if (!button) return;
+  closeExportModeModal();
+  generateExportImages(button.dataset.exportMode);
+});
 els.closeImageModal.addEventListener("click", closeImageModal);
 els.imageModal.addEventListener("click", (event) => {
   if (event.target === els.imageModal) closeImageModal();

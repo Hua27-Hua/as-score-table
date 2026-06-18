@@ -988,11 +988,22 @@ svg {
 
   .export-mode-options {
     grid-template-columns: 1fr;
+    gap: 10px;
   }
 
   .export-mode-option {
-    min-height: 94px;
-    padding: 16px;
+    min-height: 88px;
+    padding: 14px;
+    gap: 8px;
+  }
+
+  .mode-name {
+    font-size: 1rem;
+  }
+
+  .mode-description {
+    font-size: 0.82rem;
+    line-height: 1.4;
   }
 }
 

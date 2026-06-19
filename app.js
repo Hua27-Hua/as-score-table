@@ -425,7 +425,7 @@ function drawOcrBackground(ctx, width, height, mode = "light") {
   for (let y = -span; y <= span; y += rowStep) {
     const rowOffset = Math.floor((y + span) / rowStep) % 2 ? columnStep / 2 : 0;
     for (let x = -span + rowOffset; x <= span; x += columnStep) {
-      ctx.fillText("世界全女联盟打分表", x, y);
+      ctx.fillText("世界开拓者联盟打分表", x, y);
     }
   }
 
@@ -436,7 +436,7 @@ function drawOcrBackground(ctx, width, height, mode = "light") {
     for (let y = -span; y <= span; y += 58) {
       const rowOffset = Math.floor((y + span) / 58) % 2 ? 62 : 0;
       for (let x = -span + rowOffset; x <= span; x += 124) {
-        ctx.fillText("全女联盟", x, y);
+        ctx.fillText("开拓者联盟", x, y);
       }
     }
   }
@@ -627,7 +627,7 @@ function renderCard(state, rows, config) {
   const scoreColor = c.scoreRed;
   const protectionMode = ["medium", "strong"].includes(config.protectionMode) ? config.protectionMode : "light";
   const footerText =
-    "以上减分情节楼主应当排雷；若未排雷，组员指出应当接受补充。打分表来源：世界全女联盟打分表。";
+    "以上减分情节楼主应当排雷；若未排雷，组员指出应当接受补充。打分表来源：世界开拓者联盟打分表。";
 
   const now = new Date().toLocaleString("zh-CN", {
     year: "numeric",
